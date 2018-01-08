@@ -62,5 +62,17 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
       // dummy value
       1 must equalTo(1)
     }
+
+    "self-similarity by depth study" >> {
+      for (depth <- Seq(1, 2, 4, 8); numSamples <- Seq(10, 100, 1000, 10000, 100000)) {
+        val xm = new MutableLPMM(depth = depth)
+        elements.foreach(e => xm.add(e.toLowerCase()))
+        val sim = xm.similarityTo(xm, numSamples)
+        logger.debug(f"XM(*elements*) depth $depth%d self-sim with $numSamples%d samples:  $sim%1.3f")
+      }
+
+      // dummy value
+      1 must equalTo(1)
+    }
   }
 }

@@ -183,6 +183,11 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
 
     returnMap
   }
+
+  def similarityTo(other: MutableLPMM, sampleSize: Int = 100): Double =
+    if (other != null) profile(sampleSize).similarityTo(other.profile(sampleSize))
+    else if (children.isEmpty) 1.0
+    else 0.0
 }
 
 //class ImmutableLPMM() extends LossyPrefixMarkovModel {
