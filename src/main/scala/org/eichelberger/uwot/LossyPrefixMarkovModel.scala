@@ -1,4 +1,7 @@
+package org.eichelberger.uwot
+
 import com.typesafe.scalalogging.LazyLogging
+import org.eichelberger.uwot.Const.{BOS, EOS, ROOT, rws}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -20,8 +23,6 @@ object Const {
     kvs.last._1
   }
 }
-
-import Const._
 
 case class Data(raw: String) {
   private val subs: Seq[String] =
@@ -169,19 +170,18 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
     s
   }
 
-  def profile(sampleSize: Int = 100): Map[String, Double] = {
-    val returnMap = MutableMap[String, Double]()
+  def profile(sampleSize: Int = 100): SampleProfile = {
+    val returnMap = new SampleProfile(sampleSize)
 
-    val delta = 1.0 / sampleSize.toDouble
     var i = 0
     var s: String = null
     while (i < sampleSize) {
       s = sample()
-      returnMap.update(s, delta + returnMap.getOrElse(s, 0.0))
+      returnMap.add(s)
       i += 1
     }
 
-    returnMap.toMap
+    returnMap
   }
 }
 

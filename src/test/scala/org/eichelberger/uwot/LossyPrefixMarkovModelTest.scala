@@ -1,9 +1,9 @@
+package org.eichelberger.uwot
+
+import com.typesafe.scalalogging.LazyLogging
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
-import com.typesafe.scalalogging.LazyLogging
-
-import scala.collection.SortedSet
 
 @RunWith(classOf[JUnitRunner])
 class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
@@ -48,11 +48,16 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
 
       elements.foreach(e => xm.add(e.toLowerCase()))
       val profile = xm.profile(10000)
-      val keys = profile.keySet.toList.sorted
-      logger.debug("XM(*elements*).profile:")
-      keys.take(10).foreach { key => {
-        logger.debug(f"  ${profile(key)}%1.3f  $key%s")
-      }}
+      logger.debug("XM(*elements*).profile by SAMPLE:")
+      profile.byKey.take(10).foreach {
+        case (key, value) =>
+          logger.debug(f"  $value%1.3f  $key%s")
+      }
+      logger.debug("XM(*elements*).profile by WEIGHT:")
+      profile.byValue.takeRight(10).reverse.foreach {
+        case (key, value) =>
+          logger.debug(f"  $value%1.3f  $key%s")
+      }
 
       // dummy value
       1 must equalTo(1)
