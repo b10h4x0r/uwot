@@ -63,7 +63,7 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
       1 must equalTo(1)
     }
 
-    "self-similarity by depth study" >> {
+    "self- and true-similarity by depth and #samples study" >> {
       val trueProfile = new SampleProfile(elements)
 
       for (depth <- Seq(1, 2, 4, 8); numSamples <- Seq(10, 100, 1000, 10000, 100000)) {
