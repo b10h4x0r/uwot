@@ -27,7 +27,7 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
     "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium",
     "Darmstadtium", "Roentgenium", "Copernicium", "Nihonium", "Flerovium",
     "Moscovium", "Livermorium", "Tennessine", "Oganesson"
-  )
+  ).map(_.toLowerCase)
 
   "asdf" >> {
     "zxcv" >> {
@@ -46,7 +46,7 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
       xm.clear()
       logger.debug(s"XM(*cleared*):\n$xm")
 
-      elements.foreach(e => xm.add(e.toLowerCase()))
+      elements.foreach(xm.add)
       val profile = xm.profile(10000)
       logger.debug("XM(*elements*).profile by SAMPLE:")
       profile.byKey.take(10).foreach {
@@ -64,11 +64,16 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
     }
 
     "self-similarity by depth study" >> {
+      val trueProfile = new SampleProfile(elements)
+
       for (depth <- Seq(1, 2, 4, 8); numSamples <- Seq(10, 100, 1000, 10000, 100000)) {
         val xm = new MutableLPMM(depth = depth)
-        elements.foreach(e => xm.add(e.toLowerCase()))
+        elements.foreach(xm.add)
         val sim = xm.similarityTo(xm, numSamples)
         logger.debug(f"XM(*elements*) depth $depth%d self-sim with $numSamples%d samples:  $sim%1.3f")
+        val xmProfile = xm.profile(numSamples)
+        val trueSim = xmProfile.similarityTo(trueProfile)
+        logger.debug(f"XM(*elements*) depth $depth%d true-sim with $numSamples%d samples:  $trueSim%1.3f")
       }
 
       // dummy value

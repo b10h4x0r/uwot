@@ -3,6 +3,11 @@ package org.eichelberger.uwot
 import scala.collection.mutable.{HashMap => MutableHashMap}
 
 class SampleProfile(size: Int) {
+  def this(samples: Seq[String]) = {
+    this(samples.size)
+    samples.foreach(s => add(s))
+  }
+
   val data = new MutableHashMap[String, Double]().withDefaultValue(0.0)
 
   val delta: Double = 1.0 / size.toDouble
