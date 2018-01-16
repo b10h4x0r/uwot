@@ -63,21 +63,21 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
       1 must equalTo(1)
     }
 
-    "self- and true-similarity by depth and #samples study" >> {
-      val trueProfile = new SampleProfile(elements)
-
-      for (depth <- Seq(1, 2, 4, 8); numSamples <- Seq(10, 100, 1000, 10000, 100000)) {
-        val xm = new MutableLPMM(depth = depth)
-        elements.foreach(xm.add)
-        val sim = xm.similarityTo(xm, numSamples)
-        logger.debug(f"XM(*elements*) depth $depth%d self-sim with $numSamples%d samples:  $sim%1.3f")
-        val xmProfile = xm.profile(numSamples)
-        val trueSim = xmProfile.similarityTo(trueProfile)
-        logger.debug(f"XM(*elements*) depth $depth%d true-sim with $numSamples%d samples:  $trueSim%1.3f")
-      }
-
-      // dummy value
-      1 must equalTo(1)
-    }
+//    "self-similarity by depth study" >> {
+//      val trueProfile = new SampleProfile(elements)
+//
+//      for (depth <- Seq(1, 2, 4, 8); numSamples <- Seq(10, 100, 1000, 10000, 100000)) {
+//        val xm = new MutableLPMM(depth = depth)
+//        elements.foreach(xm.add)
+//        val sim = xm.similarityTo(xm, numSamples)
+//        logger.debug(f"XM(*elements*) depth $depth%d self-sim with $numSamples%d samples:  $sim%1.3f")
+//        val xmProfile = xm.profile(numSamples)
+//        val trueSim = xmProfile.similarityTo(trueProfile)
+//        logger.debug(f"XM(*elements*) depth $depth%d true-sim with $numSamples%d samples:  $trueSim%1.3f")
+//      }
+//
+//      // dummy value
+//      1 must equalTo(1)
+//    }
   }
 }
