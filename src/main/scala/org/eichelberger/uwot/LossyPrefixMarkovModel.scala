@@ -1,5 +1,6 @@
 package org.eichelberger.uwot
 
+import breeze.stats.distributions.Gaussian
 import com.typesafe.scalalogging.LazyLogging
 import org.eichelberger.uwot.Const.{BOS, EOS, ROOT, rws}
 
@@ -25,33 +26,62 @@ object Const {
   }
 }
 
-case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Double, mean: Double) {
-  def this(id: String, x: Double) = this(id, 1.0, x, x, x, x)
+case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Double, mean: Double, variance: Double) {
+  def this(id: String, x: Double) = this(id, 1.0, x, x, x, x, 0.0)
 
-  def update(x: Double, weight: Double = 1.0): Aggregate = Aggregate(
-    id,
-    n + weight,
-    Math.min(min, x),
-    Math.max(max, x),
-    sum + x,
-    (sum + x) / (n + weight)
-  )
+  def M2: Double = variance * n
 
-  def update(agg: Aggregate): Aggregate = Aggregate(
-    agg.id,
-    n + agg.n,
-    Math.min(min, agg.min),
-    Math.max(max, agg.max),
-    sum + agg.sum,
-    (sum + agg.sum) / (n + agg.n)
-  )
+  lazy val sufficientStatistic: Gaussian.SufficientStatistic =
+    Gaussian.SufficientStatistic(n, mean, M2)
+
+  lazy val std: Double = Math.sqrt(variance)
+
+  def update(x: Double, weight: Double = 1.0): Aggregate = {
+    val nextSuffStat = sufficientStatistic.+(Gaussian.SufficientStatistic(1, x, 0.0))
+
+    Aggregate(
+      id,
+      n + weight,
+      Math.min(min, x),
+      Math.max(max, x),
+      sum + x,
+      nextSuffStat.mean,
+      nextSuffStat.variance
+    )
+  }
+
+  def update(agg: Aggregate): Aggregate = {
+    val nextSuffStat = sufficientStatistic.+(agg.sufficientStatistic)
+
+    Aggregate(
+      agg.id,
+      n + agg.n,
+      Math.min(min, agg.min),
+      Math.max(max, agg.max),
+      sum + agg.sum,
+      nextSuffStat.mean,
+      nextSuffStat.variance
+    )
+  }
 
   override def toString: String =
-    f"$id%s:[$min%1.2f,$sum%1.2f/$n%1.2f=$mean%1.2f,$max%1.2f]"
+    f"$id%s:[$min%1.2f,$sum%1.2f/$n%1.2f=$mean%1.2f,$max%1.2f::$variance%1.2f]"
 
-  def score(x: Double): Double = {
-    // TODO:  replace with something meaningful
-    x
+  def score(optOther: Option[Aggregate]): Double = {
+    optOther match {
+      case Some(agg) if (agg.n + n) >= Data.MinSampleSize =>  // require a minimum sample size
+        // simple Gaussian comparison (whether or not that's reasonable for these unknown distributions)
+        val a = mean
+        val b = agg.mean
+        Gaussian(mean, std).probability(Math.min(a, b), Math.max(a, b))
+      case Some(agg) if agg.id == "length" =>
+        
+      case Some(agg) =>  // less than a minimum sample size
+
+      case None      =>
+        // TODO:  is this a reasonable score when one aggregate is missing?
+        Data.MinProbability
+    }
   }
 }
 
@@ -59,7 +89,7 @@ case class Aggregates(aggMap: HashMap[String, Aggregate]) {
   def this() = this(HashMap.empty[String, Aggregate])
   def update(id: String, x: Double, weight: Double = 1.0): Aggregates = Aggregates(aggMap.get(id) match {
     case Some(agg) => aggMap.updated(id, agg.update(x, weight))
-    case None      => aggMap + (id -> Aggregate(id, x, x, x, x, x))
+    case None      => aggMap + (id -> new Aggregate(id, x))
   })
   def update(agg: Aggregate): Aggregates = Aggregates(aggMap.get(agg.id) match {
     case Some(oldAgg) => aggMap.updated(agg.id, oldAgg.update(agg))
@@ -68,6 +98,23 @@ case class Aggregates(aggMap: HashMap[String, Aggregate]) {
   def replace(agg: Aggregate): Aggregates = Aggregates(
     aggMap.updated(agg.id, agg)
   )
+  def score(node: MutableLPMM): Double = {
+    // degenerate case:  we don't care about aggregates
+    if (!Data.UseAggregates) return node.weight
+
+    // simple case:  unbiased blend of aggregate scores
+    val allKeys = node.aggregates.aggMap.keySet ++ aggMap.keySet
+    allKeys.map(key =>
+      (aggMap.get(key), node.aggregates.aggMap.get(key)) match {
+        // a:  sequence so far; b:  candidate next node
+        case (Some(a), optB) => a.score(optB)
+        case (optA, Some(b)) => b.score(optA)
+        case _               => throw new Exception(s"Aggregate-collections both missing key '$key'")
+      }
+    ).sum * node.weight
+
+    0.0
+  }
 }
 
 case class RichToken(token: String, aggs: Aggregates) {
@@ -75,7 +122,9 @@ case class RichToken(token: String, aggs: Aggregates) {
 }
 
 object Data {
-  
+  val UseAggregates: Boolean = true
+  val MinProbability: Double = 1e-3
+  val MinSampleSize: Double = 10.0
 }
 
 case class Data(raw: String) {
@@ -85,6 +134,7 @@ case class Data(raw: String) {
   val n = subs.length
   val enriched: Seq[RichToken] = subs.zipWithIndex.foldRight(Seq[RichToken]())((tokenIndex, acc) => tokenIndex match {
     case (token, index) =>
+      // TODO:  refactor to use the node-sequence aggregation
       val lenLeft = n - index - 1
       val isVowel = if (token.toUpperCase.matches("A|E|I|O|U|Y")) 1.0 else 0.0
       val aggs: Aggregates = acc.headOption match {
@@ -207,12 +257,14 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
     child.accumulate(tail)
   }
 
-  private def nextElement(soFar: Seq[MutableLPMM]): MutableLPMM = {
+  private def nextElement(soFar: Seq[MutableLPMM], aggsSoFar: Aggregates): MutableLPMM = {
     // TODO:  use the sequence so far
 
     // build the list for RWS
     val kvs = children.map {
-      case (_, nextChild) => (nextChild, nextChild.weight)
+      case (_, nextChild) =>
+        val weight = aggsSoFar.score(nextChild)
+        (nextChild, weight)
     }.toMap
 
     // return the probabilistic child
@@ -266,7 +318,7 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
       node = matchPrefix(sequence).get
 
       // select the next child probabilistically
-      node = node.nextElement(sequence)
+      node = node.nextElement(sequence, seqAggs)
       sequence.append(node)
     }
 
