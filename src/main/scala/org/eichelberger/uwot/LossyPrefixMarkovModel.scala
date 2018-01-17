@@ -231,6 +231,17 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
     node
   }
 
+  def aggregateNode(token: String, aggs: Aggregates): Aggregates = {
+    aggs.replace(new Aggregate(  // length
+      "length",
+      aggs.aggMap.get("length").map(_.max).getOrElse(0.0) + 1.0
+    ))
+    .update(new Aggregate(  // fraction of vowels
+      "vowel",
+      if (token.toUpperCase.matches("A|E|I|O|U|Y")) 1.0 else 0.0
+    ))
+  }
+
   def sample(): String = {
     // first node must be BOS
     var node = children.getOrElse(BOS, throw new Exception("Tree does not contain BOS marker"))
@@ -249,7 +260,7 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
     while (node.data != EOS) {
       // accumulate this contribution
       if (node.data != BOS) s = s + node.data
-      seqAggs = seqAggs.update(node, aggregateNode)
+      seqAggs = aggregateNode(node.data, seqAggs)
 
       // re-seek your place in the tree
       node = matchPrefix(sequence).get
