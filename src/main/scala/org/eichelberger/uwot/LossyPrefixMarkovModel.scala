@@ -26,65 +26,6 @@ object Const {
   }
 }
 
-case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Double, mean: Double, variance: Double) {
-  def this(id: String, x: Double) = this(id, 1.0, x, x, x, x, 0.0)
-
-  def M2: Double = variance * n
-
-  lazy val sufficientStatistic: Gaussian.SufficientStatistic =
-    Gaussian.SufficientStatistic(n, mean, M2)
-
-  lazy val std: Double = Math.sqrt(variance)
-
-  def update(x: Double, weight: Double = 1.0): Aggregate = {
-    val nextSuffStat = sufficientStatistic.+(Gaussian.SufficientStatistic(1, x, 0.0))
-
-    Aggregate(
-      id,
-      n + weight,
-      Math.min(min, x),
-      Math.max(max, x),
-      sum + x,
-      nextSuffStat.mean,
-      nextSuffStat.variance
-    )
-  }
-
-  def update(agg: Aggregate): Aggregate = {
-    val nextSuffStat = sufficientStatistic.+(agg.sufficientStatistic)
-
-    Aggregate(
-      agg.id,
-      n + agg.n,
-      Math.min(min, agg.min),
-      Math.max(max, agg.max),
-      sum + agg.sum,
-      nextSuffStat.mean,
-      nextSuffStat.variance
-    )
-  }
-
-  override def toString: String =
-    f"$id%s:[$min%1.2f,$sum%1.2f/$n%1.2f=$mean%1.2f,$max%1.2f::$variance%1.2f]"
-
-  def score(optOther: Option[Aggregate]): Double = {
-    optOther match {
-      case Some(agg) if (agg.n + n) >= Data.MinSampleSize =>  // require a minimum sample size
-        // simple Gaussian comparison (whether or not that's reasonable for these unknown distributions)
-        val a = mean
-        val b = agg.mean
-        Gaussian(mean, std).probability(Math.min(a, b), Math.max(a, b))
-      case Some(agg) if agg.id == "length" =>
-        
-      case Some(agg) =>  // less than a minimum sample size
-
-      case None      =>
-        // TODO:  is this a reasonable score when one aggregate is missing?
-        Data.MinProbability
-    }
-  }
-}
-
 case class Aggregates(aggMap: HashMap[String, Aggregate]) {
   def this() = this(HashMap.empty[String, Aggregate])
   def update(id: String, x: Double, weight: Double = 1.0): Aggregates = Aggregates(aggMap.get(id) match {
@@ -112,8 +53,6 @@ case class Aggregates(aggMap: HashMap[String, Aggregate]) {
         case _               => throw new Exception(s"Aggregate-collections both missing key '$key'")
       }
     ).sum * node.weight
-
-    0.0
   }
 }
 
