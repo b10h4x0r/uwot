@@ -63,7 +63,7 @@ case class RichToken(token: String, aggs: Aggregates) {
 object Data {
   val UseAggregates: Boolean = true
   val MinProbability: Double = 1e-3
-  val MinSampleSize: Double = 10.0
+  val MinSampleSize: Double = 5.0
 }
 
 case class Data(raw: String) {
@@ -189,7 +189,13 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
 
     // update aggregates
     head.aggs.aggMap.foreach {
-      case (_, agg) => child.aggregates = child.aggregates.update(agg)
+      case (_, agg) =>
+        // TODO:  debug!
+        val a = child.aggregates
+        val b = child.aggregates.update(agg)
+        println(s"Updating '${head.token}':  aggregate $a -> $b")
+
+        child.aggregates = child.aggregates.update(agg)
     }
 
     // recurse
@@ -197,7 +203,7 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
   }
 
   private def nextElement(soFar: Seq[MutableLPMM], aggsSoFar: Aggregates): MutableLPMM = {
-    // TODO:  use the sequence so far
+    // TODO:  use the sequence so far?
 
     // build the list for RWS
     val kvs = children.map {
@@ -205,6 +211,9 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
         val weight = aggsSoFar.score(nextChild)
         (nextChild, weight)
     }.toMap
+
+    // TODO:  debug!
+    println(s"\nnextElement(${soFar.map(_.data).mkString("(",",",")")}...\n${kvs.map(t => t._1.data + " -> " + t._2.toString).mkString("(","\n  ",")")}")
 
     // return the probabilistic child
     rws(kvs)

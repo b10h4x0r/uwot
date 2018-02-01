@@ -46,18 +46,25 @@ class LossyPrefixMarkovModelTest extends Specification with LazyLogging {
       xm.clear()
       logger.debug(s"XM(*cleared*):\n$xm")
 
-      elements.foreach(xm.add)
-      val profile = xm.profile(10000)
-      logger.debug("XM(*elements*).profile by SAMPLE:")
-      profile.byKey.take(10).foreach {
-        case (key, value) =>
-          logger.debug(f"  $value%1.3f  $key%s")
-      }
-      logger.debug("XM(*elements*).profile by WEIGHT:")
-      profile.byValue.takeRight(10).reverse.foreach {
-        case (key, value) =>
-          logger.debug(f"  $value%1.3f  $key%s")
-      }
+      // TODO:  debug!
+      elements.take(3).foreach(xm.add)
+      logger.debug(s"XM(some elements):\n$xm")
+      println(xm.sample())
+      println(xm.sample())
+
+
+//      elements.foreach(xm.add)
+//      val profile = xm.profile(10000)
+//      logger.debug("XM(*elements*).profile by SAMPLE:")
+//      profile.byKey.take(10).foreach {
+//        case (key, value) =>
+//          logger.debug(f"  $value%1.3f  $key%s")
+//      }
+//      logger.debug("XM(*elements*).profile by WEIGHT:")
+//      profile.byValue.takeRight(10).reverse.foreach {
+//        case (key, value) =>
+//          logger.debug(f"  $value%1.3f  $key%s")
+//      }
 
       // dummy value
       1 must equalTo(1)
