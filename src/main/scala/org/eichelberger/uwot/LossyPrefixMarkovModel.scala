@@ -190,10 +190,10 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
     // update aggregates
     head.aggs.aggMap.foreach {
       case (_, agg) =>
-        // TODO:  debug!
-        val a = child.aggregates
-        val b = child.aggregates.update(agg)
-        println(s"Updating '${head.token}':  aggregate $a -> $b")
+//        // TODO:  debug!
+//        val a = child.aggregates
+//        val b = child.aggregates.update(agg)
+//        println(s"Updating '${head.token}':  aggregate $a -> $b")
 
         child.aggregates = child.aggregates.update(agg)
     }
@@ -213,7 +213,7 @@ class MutableLPMM(val data: String = ROOT, var weight: Double = 1.0, val depth: 
     }.toMap
 
     // TODO:  debug!
-    println(s"\nnextElement(${soFar.map(_.data).mkString("(",",",")")}...\n${kvs.map(t => t._1.data + " -> " + t._2.toString).mkString("(","\n  ",")")}")
+    //println(s"\nnextElement(${soFar.map(_.data).mkString("(",",",")")}...\n${kvs.map(t => t._1.data + " -> " + t._2.toString).mkString("(","\n  ",")")}")
 
     // return the probabilistic child
     rws(kvs)

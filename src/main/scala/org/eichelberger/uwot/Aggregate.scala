@@ -16,14 +16,13 @@ case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Doubl
   lazy val stddev: Double = Math.sqrt(variance)
 
   override def toString: String =
-    f"$id%s:[$min%1.2f,$sum%1.2f/$n%1.2f=$mean%1.2f,$max%1.2f::$variance%1.2f]"
+    f"$id%s:[min $min%1.2f, sum $sum%1.2f/$n%1.2f=$mean%1.2f, max $max%1.2f::var $variance%1.2f]"
 
   def update(x: Double, weight: Double = 1.0): Aggregate = {
     // guard
     if (x == 0.0 && sufficientStatistic.mean == 0.0 && sum == 0.0) return this
 
     val nextSuffStat = sufficientStatistic.+(Gaussian.SufficientStatistic(1, x, 0.0))
-    println(s"nSS1:  $sufficientStatistic -> $nextSuffStat")
 
     Aggregate(
       id,
@@ -43,7 +42,6 @@ case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Doubl
     agg match {
       case a: Aggregate =>
         val nextSuffStat = sufficientStatistic.+(agg.sufficientStatistic)
-        println(s"nSS2:  $sufficientStatistic -> $nextSuffStat")
         Aggregate(
           a.id,
           n + a.n,
@@ -65,12 +63,6 @@ case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Doubl
     val b = other.mean
 
     if (other.n > Data.MinSampleSize && n >= Data.MinSampleSize) {
-      // TODO:  DEBUG!
-      print(s"score Gaussian:  a $a, b $b, score ")
-      println(
-        Gaussian(mean, stddev).probability(Math.min(a, b), Math.max(a, b))
-      )
-
       // simple Gaussian comparison (whether or not that's reasonable for these unknown distributions)
       Gaussian(mean, stddev).probability(Math.min(a, b), Math.max(a, b))
     } else {
@@ -79,12 +71,6 @@ case class Aggregate(id: String, n: Double, min: Double, max: Double, sum: Doubl
       // bit of gymnastics to handle case where one (or both) means are negatove
       val delta = Math.abs(a - b)
       val rho = Math.min(Math.abs(a), Math.abs(b))
-
-      // TODO:  DEBUG!
-      print(s"score uniform:  a $a, b $b, rho $rho, delta $delta, score ")
-      println(
-      if (delta + rho < Data.MinProbability) Data.MinProbability
-      else rho / (delta + rho))
 
       if (delta + rho < Data.MinProbability) Data.MinProbability
       else rho / (delta + rho)
